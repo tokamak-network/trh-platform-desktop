@@ -1,0 +1,66 @@
+services:
+  postgres:
+    image: postgres:15-alpine
+    container_name: trh-postgres
+    ports:
+      - "5433:5432"
+    environment:
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: trh_db
+    volumes:
+      - trh_postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    restart: unless-stopped
+
+  backend:
+    image: trh-backend:electron
+    pull_policy: never
+    container_name: trh-backend
+    ports:
+      - "8000:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      PORT: 8000
+      POSTGRES_HOST: postgres
+      POSTGRES_PORT: 5432
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+      POSTGRES_DB: trh_db
+      JWT_SECRET: ${JWT_SECRET:-trh-desktop-jwt-secret-change-in-production}
+      DEFAULT_ADMIN_EMAIL: ${ADMIN_EMAIL:-admin@gmail.com}
+      DEFAULT_ADMIN_PASSWORD: ${ADMIN_PASSWORD:-admin}
+    volumes:
+      - trh_backend_data:/app/data
+      - trh_backend_logs:/app/logs
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/api/v1/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+    restart: unless-stopped
+
+  platform-ui:
+    image: trh-platform-ui:electron
+    pull_policy: never
+    container_name: trh-platform-ui
+    ports:
+      - "3000:3000"
+    depends_on:
+      backend:
+        condition: service_healthy
+    environment:
+      NEXT_PUBLIC_API_BASE_URL: http://localhost:8000
+    restart: unless-stopped
+
+volumes:
+  trh_postgres_data:
+  trh_backend_data:
+  trh_backend_logs:

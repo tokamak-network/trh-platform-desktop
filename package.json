@@ -1,0 +1,92 @@
+{
+  "name": "trh-platform-desktop",
+  "version": "1.0.0",
+  "description": "Tokamak Rollup Hub Desktop - One-click L2 rollup deployment",
+  "author": "Tokamak Network <dev@tokamak.network>",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/tokamak-network/trh-platform-desktop.git"
+  },
+  "homepage": "https://github.com/tokamak-network/trh-platform-desktop",
+  "bugs": {
+    "url": "https://github.com/tokamak-network/trh-platform-desktop/issues"
+  },
+  "keywords": [
+    "electron",
+    "tokamak",
+    "rollup",
+    "l2",
+    "blockchain",
+    "ethereum",
+    "desktop"
+  ],
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "main": "dist/main/index.js",
+  "scripts": {
+    "dev": "tsc -p tsconfig.electron.json && electron .",
+    "dev:watch": "concurrently \"tsc -p tsconfig.electron.json -w\" \"electron .\"",
+    "build": "tsc -p tsconfig.electron.json",
+    "package": "npm run build && electron-builder",
+    "package:mac": "npm run build && electron-builder --mac",
+    "package:win": "npm run build && electron-builder --win",
+    "package:linux": "npm run build && electron-builder --linux"
+  },
+  "build": {
+    "appId": "network.tokamak.trh-platform-desktop",
+    "productName": "TRH Desktop",
+    "directories": {
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*",
+      "public/**/*"
+    ],
+    "extraResources": [
+      {
+        "from": "resources/",
+        "to": "resources/",
+        "filter": ["**/*"]
+      }
+    ],
+    "mac": {
+      "target": [
+        { "target": "dmg", "arch": ["x64", "arm64"] },
+        { "target": "zip", "arch": ["x64", "arm64"] }
+      ],
+      "icon": "public/icon.icns",
+      "category": "public.app-category.developer-tools",
+      "darkModeSupport": true,
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false
+    },
+    "win": {
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "zip", "arch": ["x64"] }
+      ],
+      "icon": "public/icon.ico"
+    },
+    "linux": {
+      "target": [
+        { "target": "AppImage", "arch": ["x64"] },
+        { "target": "deb", "arch": ["x64"] }
+      ],
+      "icon": "public/icon.png",
+      "category": "Development"
+    },
+    "nsis": {
+      "oneClick": false,
+      "allowToChangeInstallationDirectory": true
+    }
+  },
+  "devDependencies": {
+    "concurrently": "^9.2.1",
+    "electron": "^33.0.0",
+    "electron-builder": "^25.1.8",
+    "typescript": "^5.9.3"
+  },
+  "dependencies": {}
+}

@@ -1,0 +1,1165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; script-src 'self' 'unsafe-inline'; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; img-src 'self' data:; media-src 'self'; font-src 'self' https://fonts.gstatic.com;">
+  <title>TRH Desktop</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root {
+      --blue: #0078FF;
+      --dark: #1C1C1C;
+      --gray-600: #52525B;
+      --gray-500: #71717A;
+      --gray-400: #A1A1AA;
+      --gray-200: #E4E4E7;
+      --gray-100: #F4F4F5;
+      --bg: #FFFFFF;
+      --success: #10B981;
+      --error: #EF4444;
+    }
+
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+
+    body {
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+      background: var(--bg);
+      color: var(--dark);
+      min-height: 100vh;
+    }
+
+    .setup-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      -webkit-app-region: drag;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.9) 100%),
+        url('assets/images/default-bg.png');
+      background-size: cover;
+      background-position: center;
+    }
+
+    .setup-page.hidden { display: none; }
+
+    .container {
+      width: 100%;
+      max-width: 420px;
+      -webkit-app-region: no-drag;
+    }
+
+    /* Header */
+    .header {
+      text-align: center;
+      margin-bottom: 40px;
+    }
+
+    .logo-row {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 20px;
+      margin-bottom: 24px;
+    }
+
+    .logo-main {
+      width: 48px;
+      height: auto;
+    }
+
+    .logo-words {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-words img {
+      height: 16px;
+      opacity: 0.8;
+    }
+
+    .logo-sep {
+      width: 1px;
+      height: 12px;
+      background: var(--gray-200);
+    }
+
+    h1 {
+      font-size: 28px;
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 6px;
+    }
+
+    .subtitle {
+      font-size: 14px;
+      color: var(--gray-500);
+    }
+
+    /* Steps */
+    .steps {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+    }
+
+    .step {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      background: var(--gray-100);
+      border-radius: 12px;
+      transition: all 0.2s;
+    }
+
+    .step.loading {
+      background: #F0F7FF;
+    }
+
+    .step.success {
+      background: #ECFDF5;
+    }
+
+    .step.error {
+      background: #FEF2F2;
+    }
+
+    /* Indicator */
+    .indicator {
+      width: 32px;
+      height: 32px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--gray-400);
+      background: white;
+      flex-shrink: 0;
+      position: relative;
+    }
+
+    .step.loading .indicator {
+      background: var(--blue);
+      color: white;
+    }
+
+    .step.loading .indicator span { opacity: 0; }
+
+    .step.loading .indicator::after {
+      content: '';
+      position: absolute;
+      width: 14px;
+      height: 14px;
+      border: 2px solid rgba(255,255,255,0.3);
+      border-top-color: white;
+      border-radius: 50%;
+      animation: spin 0.6s linear infinite;
+    }
+
+    .step.success .indicator {
+      background: var(--success);
+      color: white;
+    }
+
+    .step.error .indicator {
+      background: var(--error);
+      color: white;
+    }
+
+    @keyframes spin { to { transform: rotate(360deg); } }
+
+    /* Content */
+    .step-content { flex: 1; }
+
+    .step-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 2px;
+    }
+
+    .step-desc {
+      font-size: 12px;
+      color: var(--gray-500);
+    }
+
+    /* Progress */
+    .progress-bar {
+      height: 3px;
+      background: rgba(0,0,0,0.1);
+      border-radius: 2px;
+      margin-top: 8px;
+      overflow: hidden;
+      display: none;
+    }
+
+    .progress-bar.active { display: block; }
+
+    .progress-fill {
+      height: 100%;
+      width: 0%;
+      background: var(--blue);
+      transition: width 0.3s;
+    }
+
+    /* Error */
+    .error-box {
+      display: none;
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: #FEF2F2;
+      border-radius: 8px;
+    }
+
+    .error-box.visible { display: block; }
+
+    .error-box h4 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--error);
+      margin-bottom: 4px;
+    }
+
+    .error-box p {
+      font-size: 12px;
+      color: var(--gray-600);
+    }
+
+    /* Buttons */
+    .btn-row {
+      margin-top: 20px;
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+    }
+
+    .btn {
+      padding: 10px 20px;
+      border-radius: 8px;
+      font-size: 13px;
+      font-weight: 600;
+      cursor: pointer;
+      border: none;
+      transition: all 0.15s;
+    }
+
+    .btn-primary {
+      background: var(--blue);
+      color: white;
+    }
+
+    .btn-primary:hover { background: #0066DD; }
+
+    .btn-outline {
+      background: white;
+      color: var(--dark);
+      border: 1px solid var(--gray-200);
+    }
+
+    .btn-outline:hover { border-color: var(--gray-400); }
+
+    .hidden { display: none !important; }
+
+    /* Check SVG */
+    .check {
+      width: 14px;
+      height: 14px;
+    }
+
+    .check path {
+      stroke: white;
+      stroke-width: 2.5;
+      fill: none;
+      stroke-linecap: round;
+      stroke-linejoin: round;
+    }
+
+    .version {
+      position: fixed;
+      bottom: 16px;
+      right: 20px;
+      font-size: 11px;
+      color: var(--gray-400);
+    }
+
+    /* Solar System */
+    .solar-system {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 100%;
+      height: 100%;
+    }
+
+    .solar-center {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      width: 180px;
+      height: 180px;
+      z-index: 10;
+    }
+
+    .orbit {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      border: 1px dashed rgba(28, 28, 28, 0.2);
+      border-radius: 50%;
+      transform: translate(-50%, -50%);
+    }
+
+    .orbit-1 { width: 260px; height: 260px; }
+    .orbit-2 { width: 380px; height: 380px; }
+    .orbit-3 { width: 520px; height: 520px; }
+    .orbit-4 { width: 700px; height: 700px; }
+    .orbit-5 { width: 920px; height: 920px; }
+    .orbit-6 { width: 1200px; height: 1200px; }
+
+    .planet {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      transform-origin: center center;
+    }
+
+    .planet-dot {
+      width: 16px;
+      height: 16px;
+      background: radial-gradient(circle at 30% 30%, #ccc, #3c3c3c, #000);
+      border-radius: 50%;
+      position: relative;
+    }
+
+    /* Satellite dot */
+    .planet-2 .planet-dot::after {
+      content: '';
+      position: absolute;
+      width: 6px;
+      height: 6px;
+      background: radial-gradient(circle at 30% 30%, #ccc, #3c3c3c, #000);
+      border-radius: 50%;
+      top: -2px;
+      right: -10px;
+    }
+
+    .planet-label {
+      position: absolute;
+      top: -22px;
+      white-space: nowrap;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--dark);
+    }
+
+    .planet-1 { animation: orbit1 15s linear infinite; }
+    .planet-2 { animation: orbit2 20s linear infinite; }
+    .planet-3 { animation: orbit3 28s linear infinite; }
+    .planet-4 { animation: orbit4 38s linear infinite; }
+    .planet-5 { animation: orbit5 50s linear infinite; }
+    .planet-6 { animation: orbit6 65s linear infinite; }
+
+    .planet-1 .planet-dot { width: 14px; height: 14px; }
+    .planet-2 .planet-dot { width: 16px; height: 16px; }
+    .planet-3 .planet-dot { width: 18px; height: 18px; }
+    .planet-4 .planet-dot { width: 14px; height: 14px; }
+    .planet-5 .planet-dot { width: 20px; height: 20px; }
+    .planet-6 .planet-dot { width: 22px; height: 22px; }
+
+    @keyframes orbit1 {
+      from { transform: translate(-50%, -50%) rotate(30deg) translateX(130px) rotate(-30deg); }
+      to { transform: translate(-50%, -50%) rotate(390deg) translateX(130px) rotate(-390deg); }
+    }
+
+    @keyframes orbit2 {
+      from { transform: translate(-50%, -50%) rotate(90deg) translateX(190px) rotate(-90deg); }
+      to { transform: translate(-50%, -50%) rotate(450deg) translateX(190px) rotate(-450deg); }
+    }
+
+    @keyframes orbit3 {
+      from { transform: translate(-50%, -50%) rotate(200deg) translateX(260px) rotate(-200deg); }
+      to { transform: translate(-50%, -50%) rotate(560deg) translateX(260px) rotate(-560deg); }
+    }
+
+    @keyframes orbit4 {
+      from { transform: translate(-50%, -50%) rotate(320deg) translateX(350px) rotate(-320deg); }
+      to { transform: translate(-50%, -50%) rotate(680deg) translateX(350px) rotate(-680deg); }
+    }
+
+    @keyframes orbit5 {
+      from { transform: translate(-50%, -50%) rotate(150deg) translateX(460px) rotate(-150deg); }
+      to { transform: translate(-50%, -50%) rotate(510deg) translateX(460px) rotate(-510deg); }
+    }
+
+    @keyframes orbit6 {
+      from { transform: translate(-50%, -50%) rotate(270deg) translateX(600px) rotate(-270deg); }
+      to { transform: translate(-50%, -50%) rotate(630deg) translateX(600px) rotate(-630deg); }
+    }
+
+    /* Ready Page */
+    .ready-page {
+      min-height: 100vh;
+      display: none;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      padding-top: 64px;
+      position: relative;
+      overflow: hidden;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.9) 100%),
+        url('assets/images/default-bg.png');
+      background-size: cover;
+      background-position: center;
+    }
+
+    .ready-page.visible {
+      display: flex;
+    }
+
+    .ready-content {
+      text-align: left;
+      -webkit-app-region: no-drag;
+      z-index: 20;
+      position: absolute;
+      bottom: 50px;
+      left: 50px;
+      max-width: 600px;
+    }
+
+    .ready-title {
+      font-size: 56px;
+      font-weight: 700;
+      color: var(--dark);
+      margin-bottom: 20px;
+      letter-spacing: -2px;
+      line-height: 1.05;
+      text-transform: uppercase;
+    }
+
+    .ready-title span {
+      display: block;
+      font-size: 62px;
+    }
+
+    .ready-subtitle {
+      font-size: 18px;
+      color: var(--dark);
+      margin-bottom: 6px;
+      font-weight: 500;
+      line-height: 1.5;
+    }
+
+    .ready-subtitle-secondary {
+      font-size: 18px;
+      color: var(--dark);
+      margin-bottom: 32px;
+      font-weight: 500;
+    }
+
+    .ready-buttons {
+      display: flex;
+      gap: 15px;
+      justify-content: flex-start;
+    }
+
+    .btn-start {
+      background: var(--dark);
+      color: white;
+      padding: 12px 24px;
+      border-radius: 24px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 8px;
+      height: 46px;
+      min-width: 140px;
+      transition: all 0.2s;
+    }
+
+    .btn-start:hover { background: #0070ED; }
+
+    .btn-start img {
+      width: 14px;
+      height: 14px;
+    }
+
+    .btn-secondary {
+      background: rgba(255, 255, 255, 0.5);
+      color: var(--dark);
+      padding: 12px 24px;
+      border-radius: 24px;
+      font-size: 14px;
+      font-weight: 600;
+      border: 2px solid #DFE4EE;
+      cursor: pointer;
+      height: 46px;
+      min-width: 140px;
+      transition: all 0.2s;
+    }
+
+    .btn-secondary:hover {
+      background: var(--dark);
+      color: white;
+      border-color: var(--dark);
+    }
+
+    /* Config Page */
+    .config-page {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 40px;
+      -webkit-app-region: drag;
+      background:
+        linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.9) 100%),
+        url('assets/images/default-bg.png');
+      background-size: cover;
+      background-position: center;
+    }
+
+    .config-page.hidden { display: none; }
+
+    .config-container {
+      width: 100%;
+      max-width: 440px;
+      -webkit-app-region: no-drag;
+    }
+
+    .config-header {
+      text-align: center;
+      margin-bottom: 32px;
+    }
+
+    .config-header h1 {
+      font-size: 24px;
+      font-weight: 700;
+      margin-bottom: 8px;
+    }
+
+    .config-header p {
+      font-size: 14px;
+      color: var(--gray-500);
+    }
+
+    .config-card {
+      background: white;
+      border-radius: 16px;
+      padding: 24px;
+      box-shadow: 0 4px 24px rgba(0,0,0,0.08);
+    }
+
+    .config-option {
+      display: flex;
+      align-items: flex-start;
+      gap: 12px;
+      padding: 16px;
+      border: 2px solid var(--gray-200);
+      border-radius: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+      margin-bottom: 12px;
+    }
+
+    .config-option:hover {
+      border-color: var(--gray-400);
+    }
+
+    .config-option.selected {
+      border-color: var(--blue);
+      background: #F0F7FF;
+    }
+
+    .config-option input[type="radio"] {
+      margin-top: 2px;
+      accent-color: var(--blue);
+    }
+
+    .config-option-content {
+      flex: 1;
+    }
+
+    .config-option-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 4px;
+    }
+
+    .config-option-desc {
+      font-size: 12px;
+      color: var(--gray-500);
+    }
+
+    .config-fields {
+      margin-top: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--gray-200);
+      display: none;
+    }
+
+    .config-fields.visible {
+      display: block;
+    }
+
+    .form-group {
+      margin-bottom: 16px;
+    }
+
+    .form-group label {
+      display: block;
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--dark);
+      margin-bottom: 6px;
+    }
+
+    .form-group input {
+      width: 100%;
+      padding: 10px 14px;
+      border: 1px solid var(--gray-200);
+      border-radius: 8px;
+      font-size: 14px;
+      font-family: inherit;
+      transition: border-color 0.2s;
+    }
+
+    .form-group input:focus {
+      outline: none;
+      border-color: var(--blue);
+    }
+
+    .form-group .hint {
+      font-size: 11px;
+      color: var(--gray-400);
+      margin-top: 4px;
+    }
+
+    .config-actions {
+      margin-top: 24px;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .btn-continue {
+      background: var(--dark);
+      color: white;
+      padding: 12px 32px;
+      border-radius: 24px;
+      font-size: 14px;
+      font-weight: 600;
+      border: none;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      transition: all 0.2s;
+    }
+
+    .btn-continue:hover {
+      background: #0070ED;
+    }
+
+    .btn-continue img {
+      width: 14px;
+      height: 14px;
+    }
+
+    .credentials-display {
+      margin-top: 16px;
+      padding: 12px 16px;
+      background: var(--gray-100);
+      border-radius: 8px;
+    }
+
+    .credentials-display p {
+      font-size: 12px;
+      color: var(--gray-600);
+      margin-bottom: 4px;
+    }
+
+    .credentials-display code {
+      font-family: 'SF Mono', Monaco, monospace;
+      font-size: 13px;
+      color: var(--dark);
+      font-weight: 500;
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Configuration Page -->
+  <div class="config-page" id="config-page">
+    <div class="config-container">
+      <div class="config-header">
+        <h1>Platform Configuration</h1>
+        <p>Set up your admin credentials for the platform</p>
+      </div>
+
+      <div class="config-card">
+        <div class="config-option selected" id="option-default" onclick="selectOption('default')">
+          <input type="radio" name="config-type" value="default" checked>
+          <div class="config-option-content">
+            <div class="config-option-title">Use Default Credentials</div>
+            <div class="config-option-desc">Quick setup with pre-configured admin account</div>
+            <div class="credentials-display">
+              <p>Email: <code>admin@gmail.com</code></p>
+              <p>Password: <code>admin</code></p>
+            </div>
+          </div>
+        </div>
+
+        <div class="config-option" id="option-custom" onclick="selectOption('custom')">
+          <input type="radio" name="config-type" value="custom">
+          <div class="config-option-content">
+            <div class="config-option-title">Set Custom Credentials</div>
+            <div class="config-option-desc">Configure your own admin email and password</div>
+          </div>
+        </div>
+
+        <div class="config-fields" id="custom-fields">
+          <div class="form-group">
+            <label for="admin-email">Admin Email</label>
+            <input type="email" id="admin-email" placeholder="admin@example.com" value="">
+            <div class="hint">Must be a valid email format</div>
+          </div>
+          <div class="form-group">
+            <label for="admin-password">Admin Password</label>
+            <input type="password" id="admin-password" placeholder="Enter password" value="">
+            <div class="hint">Minimum 8 characters</div>
+          </div>
+        </div>
+
+        <div class="config-actions">
+          <button class="btn-continue" id="btn-continue" onclick="continueSetup()">
+            Continue
+            <img src="assets/icon/next-icon.svg" alt="arrow">
+          </button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="setup-page hidden" id="setup-page">
+    <div class="container">
+      <div class="header">
+        <div class="logo-row">
+          <img src="assets/logo/logo.svg" alt="TRH" class="logo-main">
+          <div class="logo-words">
+            <img src="assets/logo/tokamak.svg" alt="Tokamak">
+            <div class="logo-sep"></div>
+            <img src="assets/logo/rolluphub.svg" alt="Rollup Hub">
+          </div>
+        </div>
+        <h1>TRH Desktop</h1>
+        <p class="subtitle">One-click L2 Rollup Deployment</p>
+      </div>
+
+      <div class="steps">
+        <div class="step" id="step-docker">
+          <div class="indicator"><span>1</span></div>
+          <div class="step-content">
+            <div class="step-title">Docker Environment</div>
+            <div class="step-desc" id="detail-docker">Checking...</div>
+          </div>
+        </div>
+
+        <div class="step" id="step-images">
+          <div class="indicator"><span>2</span></div>
+          <div class="step-content">
+            <div class="step-title">Container Images</div>
+            <div class="step-desc" id="detail-images">Waiting...</div>
+            <div class="progress-bar" id="progress-images">
+              <div class="progress-fill" id="progress-fill-images"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step" id="step-containers">
+          <div class="indicator"><span>3</span></div>
+          <div class="step-content">
+            <div class="step-title">Starting Services</div>
+            <div class="step-desc" id="detail-containers">Waiting...</div>
+          </div>
+        </div>
+
+        <div class="step" id="step-deps">
+          <div class="indicator"><span>4</span></div>
+          <div class="step-content">
+            <div class="step-title">Backend Dependencies</div>
+            <div class="step-desc" id="detail-deps">Waiting...</div>
+            <div class="progress-bar" id="progress-deps">
+              <div class="progress-fill" id="progress-fill-deps"></div>
+            </div>
+          </div>
+        </div>
+
+        <div class="step" id="step-ready">
+          <div class="indicator"><span>5</span></div>
+          <div class="step-content">
+            <div class="step-title">Platform Ready</div>
+            <div class="step-desc" id="detail-ready">Waiting...</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="error-box" id="error-container">
+        <h4 id="error-title">Error</h4>
+        <p id="error-text"></p>
+      </div>
+
+      <div class="btn-row" id="setup-buttons">
+        <button class="btn btn-primary hidden" id="btn-install-docker">Install Docker</button>
+        <button class="btn btn-outline hidden" id="btn-retry">Retry</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="ready-page" id="ready-page">
+    <div class="solar-system">
+      <img src="assets/trh-center.svg" alt="TRH" class="solar-center">
+      <div class="orbit orbit-1"></div>
+      <div class="orbit orbit-2"></div>
+      <div class="orbit orbit-3"></div>
+      <div class="orbit orbit-4"></div>
+      <div class="orbit orbit-5"></div>
+      <div class="orbit orbit-6"></div>
+      <div class="planet planet-1">
+        <span class="planet-label">App Chain</span>
+        <div class="planet-dot"></div>
+      </div>
+      <div class="planet planet-2">
+        <span class="planet-label">Ecosystem</span>
+        <div class="planet-dot"></div>
+      </div>
+      <div class="planet planet-3">
+        <span class="planet-label">Protocol</span>
+        <div class="planet-dot"></div>
+      </div>
+      <div class="planet planet-4">
+        <span class="planet-label">Stack</span>
+        <div class="planet-dot"></div>
+      </div>
+      <div class="planet planet-5">
+        <span class="planet-label">Integration</span>
+        <div class="planet-dot"></div>
+      </div>
+      <div class="planet planet-6">
+        <span class="planet-label">SDK</span>
+        <div class="planet-dot"></div>
+      </div>
+    </div>
+    <div class="ready-content">
+      <h1 class="ready-title">
+        L2 On-Demand
+        <span>Tailored for Ethereum</span>
+      </h1>
+      <p class="ready-subtitle">Explore and Deploy your On-Demand Appchain</p>
+      <p class="ready-subtitle-secondary">A Fast, Secure, and Fully Customizable L2 Appchain</p>
+      <div class="ready-buttons">
+        <button class="btn-secondary" id="btn-dashboard">Dashboard</button>
+        <button class="btn-start" id="btn-get-started">
+          Get Started
+          <img src="assets/icon/next-icon.svg" alt="arrow">
+        </button>
+      </div>
+    </div>
+  </div>
+
+  <div class="version" id="version">v1.0.0</div>
+
+  <script>
+    const api = window.electronAPI;
+    const checkSVG = '<svg class="check" viewBox="0 0 24 24"><path d="M5 12l5 5L20 7"/></svg>';
+
+    let configType = 'default';
+    let adminEmail = 'admin@gmail.com';
+    let adminPassword = 'admin';
+
+    const steps = {
+      docker: { el: 'step-docker', detail: 'detail-docker' },
+      images: { el: 'step-images', detail: 'detail-images' },
+      containers: { el: 'step-containers', detail: 'detail-containers' },
+      deps: { el: 'step-deps', detail: 'detail-deps' },
+      ready: { el: 'step-ready', detail: 'detail-ready' }
+    };
+
+    function selectOption(type) {
+      configType = type;
+      document.getElementById('option-default').classList.toggle('selected', type === 'default');
+      document.getElementById('option-custom').classList.toggle('selected', type === 'custom');
+      document.querySelector('#option-default input').checked = type === 'default';
+      document.querySelector('#option-custom input').checked = type === 'custom';
+      document.getElementById('custom-fields').classList.toggle('visible', type === 'custom');
+    }
+
+    function validateEmail(email) {
+      return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+    }
+
+    function continueSetup() {
+      if (configType === 'custom') {
+        const email = document.getElementById('admin-email').value.trim();
+        const password = document.getElementById('admin-password').value;
+
+        if (!email || !validateEmail(email)) {
+          alert('Please enter a valid email address');
+          return;
+        }
+        if (!password || password.length < 8) {
+          alert('Password must be at least 8 characters');
+          return;
+        }
+
+        adminEmail = email;
+        adminPassword = password;
+      }
+
+      document.getElementById('config-page').classList.add('hidden');
+      document.getElementById('setup-page').classList.remove('hidden');
+      startSetup();
+    }
+
+    function setStepStatus(step, status, detail) {
+      const stepEl = document.getElementById(steps[step].el);
+      const detailEl = document.getElementById(steps[step].detail);
+      const indicator = stepEl.querySelector('.indicator');
+
+      stepEl.classList.remove('loading', 'success', 'error');
+      stepEl.classList.add(status);
+
+      if (status === 'success') {
+        indicator.innerHTML = checkSVG;
+      } else if (status === 'error') {
+        indicator.innerHTML = '<span>!</span>';
+      } else if (status === 'loading') {
+        indicator.innerHTML = '<span></span>';
+      }
+
+      if (detail) detailEl.textContent = detail;
+    }
+
+    function showError(title, message) {
+      document.getElementById('error-container').classList.add('visible');
+      document.getElementById('error-title').textContent = title;
+      document.getElementById('error-text').textContent = message;
+    }
+
+    function hideError() {
+      document.getElementById('error-container').classList.remove('visible');
+    }
+
+    function showButton(id) {
+      document.getElementById(id).classList.remove('hidden');
+    }
+
+    function hideButton(id) {
+      document.getElementById(id).classList.add('hidden');
+    }
+
+    function showReadyPage() {
+      document.getElementById('setup-page').classList.add('hidden');
+      document.getElementById('config-page').classList.add('hidden');
+      document.getElementById('ready-page').classList.add('visible');
+    }
+
+    async function init() {
+      try {
+        const version = await api.app.getVersion();
+        document.getElementById('version').textContent = 'v' + version;
+      } catch {}
+
+      const status = await api.docker.getStatus();
+      if (status.healthy) {
+        showReadyPage();
+        return;
+      }
+
+    }
+
+    async function startSetup() {
+      hideError();
+      hideButton('btn-retry');
+      hideButton('btn-install-docker');
+
+      Object.keys(steps).forEach((step, i) => {
+        const stepEl = document.getElementById(steps[step].el);
+        const indicator = stepEl.querySelector('.indicator');
+        stepEl.classList.remove('loading', 'success', 'error');
+        indicator.innerHTML = '<span>' + (i + 1) + '</span>';
+        document.getElementById(steps[step].detail).textContent = 'Waiting...';
+      });
+      document.getElementById('progress-images').classList.remove('active');
+      document.getElementById('progress-fill-images').style.width = '0%';
+      document.getElementById('progress-deps').classList.remove('active');
+      document.getElementById('progress-fill-deps').style.width = '0%';
+
+      setStepStatus('docker', 'loading', 'Checking Docker...');
+
+      const installed = await api.docker.checkInstalled();
+      if (!installed) {
+        setStepStatus('docker', 'error', 'Not installed');
+        showError('Docker Required', 'Install Docker Desktop to continue.');
+        showButton('btn-install-docker');
+        showButton('btn-retry');
+        return;
+      }
+
+      const running = await api.docker.checkRunning();
+      if (!running) {
+        setStepStatus('docker', 'error', 'Not running');
+        showError('Docker Not Running', 'Start Docker Desktop and retry.');
+        showButton('btn-retry');
+        return;
+      }
+
+      setStepStatus('docker', 'success', 'Docker ready');
+
+      setStepStatus('images', 'loading', 'Pulling images...');
+      document.getElementById('progress-images').classList.add('active');
+
+      let pullProgress = 0;
+      api.docker.onPullProgress((progress) => {
+        pullProgress = Math.min(pullProgress + 2, 95);
+        document.getElementById('progress-fill-images').style.width = pullProgress + '%';
+        const detail = progress.status.length > 35 ? progress.status.substring(0, 35) + '...' : progress.status;
+        setStepStatus('images', 'loading', detail);
+      });
+
+      try {
+        await api.docker.pullImages();
+        document.getElementById('progress-fill-images').style.width = '100%';
+        setStepStatus('images', 'success', 'Images ready');
+      } catch (error) {
+        setStepStatus('images', 'error', 'Failed');
+        showError('Pull Failed', error.message || 'Check internet connection.');
+        showButton('btn-retry');
+        return;
+      } finally {
+        api.docker.removeAllListeners();
+      }
+
+      setStepStatus('containers', 'loading', 'Starting...');
+
+      try {
+        await api.docker.start({ adminEmail, adminPassword });
+        setStepStatus('containers', 'success', 'Running');
+      } catch (error) {
+        setStepStatus('containers', 'error', 'Failed');
+        showError('Start Failed', error.message || 'Could not start.');
+        showButton('btn-retry');
+        return;
+      }
+
+      setStepStatus('deps', 'loading', 'Checking dependencies...');
+      document.getElementById('progress-deps').classList.add('active');
+      document.getElementById('progress-fill-deps').style.width = '10%';
+
+      try {
+        await new Promise(r => setTimeout(r, 2000));
+
+        const deps = await api.docker.checkBackendDeps();
+        document.getElementById('progress-fill-deps').style.width = '30%';
+
+        if (!deps.allInstalled) {
+          const missing = [];
+          if (!deps.pnpm) missing.push('pnpm');
+          if (!deps.node) missing.push('node');
+          if (!deps.forge) missing.push('forge');
+          if (!deps.aws) missing.push('aws');
+
+          setStepStatus('deps', 'loading', `Installing: ${missing.join(', ')}...`);
+
+          api.docker.onInstallProgress((status) => {
+            const detail = status.length > 35 ? status.substring(0, 35) + '...' : status;
+            setStepStatus('deps', 'loading', detail);
+          });
+
+          await api.docker.installBackendDeps();
+          api.docker.removeAllListeners();
+
+          document.getElementById('progress-fill-deps').style.width = '90%';
+          setStepStatus('deps', 'loading', 'Verifying installation...');
+          await new Promise(r => setTimeout(r, 1000));
+
+          const verifyDeps = await api.docker.checkBackendDeps();
+          if (!verifyDeps.allInstalled) {
+            const stillMissing = [];
+            if (!verifyDeps.pnpm) stillMissing.push('pnpm');
+            if (!verifyDeps.node) stillMissing.push('node');
+            if (!verifyDeps.forge) stillMissing.push('forge');
+            if (!verifyDeps.aws) stillMissing.push('aws');
+            throw new Error(`Still missing: ${stillMissing.join(', ')}`);
+          }
+        }
+
+        document.getElementById('progress-fill-deps').style.width = '100%';
+        setStepStatus('deps', 'success', 'All tools ready');
+      } catch (error) {
+        api.docker.removeAllListeners();
+        setStepStatus('deps', 'error', 'Installation failed');
+        showError('Dependencies Failed', error.message || 'Could not install backend tools.');
+        showButton('btn-retry');
+        return;
+      }
+
+      setStepStatus('ready', 'loading', 'Health check...');
+
+      api.docker.onStatusUpdate((status) => {
+        setStepStatus('ready', 'loading', status);
+      });
+
+      try {
+        const healthy = await api.docker.waitHealthy(180000);
+        api.docker.removeAllListeners();
+
+        if (!healthy) {
+          setStepStatus('ready', 'error', 'Timeout');
+          showError('Timeout', 'Services did not start.');
+          showButton('btn-retry');
+          return;
+        }
+
+        setStepStatus('ready', 'success', 'All systems go!');
+
+        await new Promise(r => setTimeout(r, 600));
+        showReadyPage();
+      } catch (error) {
+        api.docker.removeAllListeners();
+        setStepStatus('ready', 'error', 'Error');
+        showError('Failed', error.message || 'Unexpected error.');
+        showButton('btn-retry');
+      }
+    }
+
+    document.getElementById('btn-install-docker').addEventListener('click', async () => {
+      const url = await api.docker.getInstallUrl();
+      await api.app.openExternal(url);
+    });
+
+    document.getElementById('btn-retry').addEventListener('click', () => startSetup());
+    document.getElementById('btn-get-started').addEventListener('click', () => api.app.loadPlatform());
+    document.getElementById('btn-dashboard').addEventListener('click', () => api.app.loadPlatform());
+
+    init();
+  </script>
+</body>
+</html>

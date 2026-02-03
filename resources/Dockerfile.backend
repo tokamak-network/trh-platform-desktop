@@ -1,0 +1,45 @@
+# Custom backend image with all required dependencies for TRH Desktop
+FROM trh-backend:cross-trade
+
+# Install base dependencies
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl \
+    unzip \
+    wget \
+    ca-certificates \
+    gnupg \
+    git \
+    build-essential \
+    sudo \
+    && apt-get clean \
+    && rm -rf /var/lib/apt/lists/*
+
+# Download and run the official TRH dependencies install script
+RUN wget -q https://raw.githubusercontent.com/tokamak-network/trh-backend/refs/heads/main/docker_install_dependencies_script.sh \
+    && chmod +x docker_install_dependencies_script.sh \
+    && DEBIAN_FRONTEND=noninteractive TZ=UTC ./docker_install_dependencies_script.sh || true \
+    && rm docker_install_dependencies_script.sh
+
+# Create symlinks for all installed tools
+RUN ln -sf /root/.local/share/pnpm/pnpm /usr/local/bin/pnpm 2>/dev/null || true \
+    && ln -sf /root/.nvm/versions/node/*/bin/npx /usr/local/bin/npx 2>/dev/null || true \
+    && ln -sf /root/.nvm/versions/node/*/bin/node /usr/local/bin/node 2>/dev/null || true \
+    && ln -sf /root/.nvm/versions/node/*/bin/npm /usr/local/bin/npm 2>/dev/null || true \
+    && ln -sf /root/.foundry/bin/forge /usr/local/bin/forge 2>/dev/null || true \
+    && ln -sf /root/.foundry/bin/cast /usr/local/bin/cast 2>/dev/null || true \
+    && ln -sf /root/.foundry/bin/anvil /usr/local/bin/anvil 2>/dev/null || true
+
+# AWS CLI is already installed by the dependencies script
+
+# Verify key installations
+RUN echo "=== Verifying installations ===" \
+    && (which pnpm && pnpm --version || echo "pnpm: not found") \
+    && (which node && node --version || echo "node: not found") \
+    && (which forge && forge --version || echo "forge: not found") \
+    && (which aws && aws --version || echo "aws: not found")
+
+# Set up environment
+ENV PATH="/root/.foundry/bin:/root/.local/share/pnpm:/root/.nvm/versions/node/v20.16.0/bin:/usr/local/bin:$PATH"
+
+# Source bashrc on container start
+SHELL ["/bin/bash", "-c"]
