@@ -1,11 +1,17 @@
-import { spawn, exec } from 'child_process';
+import { spawn, exec, ChildProcess } from 'child_process';
 import * as path from 'path';
 import * as fs from 'fs';
+import * as net from 'net';
 import { app } from 'electron';
 
 const COMMAND_TIMEOUT = 30000;
 const HEALTH_CHECK_TIMEOUT = 120000;
 const HEALTH_CHECK_INTERVAL = 3000;
+const PULL_TIMEOUT = 600000;
+const COMPOSE_TIMEOUT = 120000;
+
+const REQUIRED_PORTS = [3000, 5433, 8000];
+const activeProcesses = new Set<ChildProcess>();
 
 const DOCKER_PATHS = [
   '/usr/local/bin/docker',
@@ -73,6 +79,40 @@ function execPromise(command: string, timeout = COMMAND_TIMEOUT): Promise<string
       }
     });
   });
+}
+
+async function isPortAvailable(port: number): Promise<boolean> {
+  return new Promise((resolve) => {
+    const server = net.createServer();
+    server.once('error', () => resolve(false));
+    server.once('listening', () => {
+      server.close();
+      resolve(true);
+    });
+    server.listen(port, '127.0.0.1');
+  });
+}
+
+async function checkRequiredPorts(): Promise<{ available: boolean; blockedPorts: number[] }> {
+  const blockedPorts: number[] = [];
+  for (const port of REQUIRED_PORTS) {
+    if (!(await isPortAvailable(port))) {
+      blockedPorts.push(port);
+    }
+  }
+  return { available: blockedPorts.length === 0, blockedPorts };
+}
+
+export function cleanupProcesses(): void {
+  activeProcesses.forEach(proc => {
+    if (!proc.killed) {
+      proc.kill('SIGTERM');
+      setTimeout(() => {
+        if (!proc.killed) proc.kill('SIGKILL');
+      }, 5000);
+    }
+  });
+  activeProcesses.clear();
 }
 
 function validateCredentials(config?: ContainerConfig): { email?: string; password?: string } {
@@ -166,6 +206,13 @@ export async function pullImages(onProgress: (progress: PullProgress) => void): 
       env: { ...process.env, PATH: EXTENDED_PATH }
     });
 
+    activeProcesses.add(pull);
+
+    const timeout = setTimeout(() => {
+      pull.kill('SIGTERM');
+      reject(new Error('Image pull timed out after 10 minutes. Check your internet connection.'));
+    }, PULL_TIMEOUT);
+
     const parseOutput = (data: Buffer) => {
       const lines = data.toString().split('\n').filter(Boolean);
       for (const line of lines) {
@@ -180,12 +227,34 @@ export async function pullImages(onProgress: (progress: PullProgress) => void): 
 
     pull.stdout.on('data', parseOutput);
     pull.stderr.on('data', parseOutput);
-    pull.on('close', code => code === 0 ? resolve() : reject(new Error(`Docker pull failed with code ${code}`)));
-    pull.on('error', reject);
+
+    pull.on('close', code => {
+      clearTimeout(timeout);
+      activeProcesses.delete(pull);
+      if (code === 0) {
+        resolve();
+      } else {
+        reject(new Error(`Docker pull failed with code ${code}. Check if images exist or network is available.`));
+      }
+    });
+
+    pull.on('error', (err) => {
+      clearTimeout(timeout);
+      activeProcesses.delete(pull);
+      reject(err);
+    });
   });
 }
 
 export async function startContainers(config?: ContainerConfig): Promise<void> {
+  const portCheck = await checkRequiredPorts();
+  if (!portCheck.available) {
+    throw new Error(
+      `Ports already in use: ${portCheck.blockedPorts.join(', ')}. ` +
+      'Close applications using these ports and try again.'
+    );
+  }
+
   const composePath = getComposePath();
   const credentials = validateCredentials(config);
 
@@ -199,8 +268,39 @@ export async function startContainers(config?: ContainerConfig): Promise<void> {
       env
     });
 
-    up.on('close', code => code === 0 ? resolve() : reject(new Error(`Docker compose up failed with code ${code}`)));
-    up.on('error', reject);
+    activeProcesses.add(up);
+
+    const timeout = setTimeout(() => {
+      up.kill('SIGTERM');
+      reject(new Error('Container startup timed out. Docker may be unresponsive.'));
+    }, COMPOSE_TIMEOUT);
+
+    let stderrOutput = '';
+    up.stderr.on('data', (data) => { stderrOutput += data.toString(); });
+
+    up.on('close', code => {
+      clearTimeout(timeout);
+      activeProcesses.delete(up);
+      if (code === 0) {
+        resolve();
+      } else {
+        let errorMsg = `Docker compose up failed with code ${code}.`;
+        if (stderrOutput.includes('port is already allocated')) {
+          errorMsg = 'Port conflict detected. Another process is using required ports.';
+        } else if (stderrOutput.includes('No such image')) {
+          errorMsg = 'Required Docker images not found. Please pull images first.';
+        } else if (stderrOutput.includes('Cannot connect')) {
+          errorMsg = 'Cannot connect to Docker daemon. Is Docker Desktop running?';
+        }
+        reject(new Error(errorMsg));
+      }
+    });
+
+    up.on('error', (err) => {
+      clearTimeout(timeout);
+      activeProcesses.delete(up);
+      reject(err);
+    });
   });
 }
 
@@ -213,8 +313,28 @@ export async function stopContainers(): Promise<void> {
       env: { ...process.env, PATH: EXTENDED_PATH }
     });
 
-    down.on('close', code => code === 0 ? resolve() : reject(new Error(`Docker compose down failed with code ${code}`)));
-    down.on('error', reject);
+    activeProcesses.add(down);
+
+    const timeout = setTimeout(() => {
+      down.kill('SIGTERM');
+      reject(new Error('Container shutdown timed out. Try force-stopping Docker containers manually.'));
+    }, COMPOSE_TIMEOUT);
+
+    down.on('close', code => {
+      clearTimeout(timeout);
+      activeProcesses.delete(down);
+      if (code === 0 || code === null) {
+        resolve();
+      } else {
+        reject(new Error(`Docker compose down failed with code ${code}`));
+      }
+    });
+
+    down.on('error', (err) => {
+      clearTimeout(timeout);
+      activeProcesses.delete(down);
+      reject(err);
+    });
   });
 }
 
