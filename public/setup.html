@@ -893,6 +893,17 @@
     let configType = 'default';
     let adminEmail = 'admin@gmail.com';
     let adminPassword = 'admin';
+    let setupInProgress = false;
+    let setupCompleted = false;
+    let cleanupFunctions = [];
+
+    window.addEventListener('beforeunload', (e) => {
+      if (setupInProgress && !setupCompleted) {
+        e.preventDefault();
+        e.returnValue = 'Setup is in progress. Closing now may leave the system in an inconsistent state.';
+        return e.returnValue;
+      }
+    });
 
     const steps = {
       docker: { el: 'step-docker', detail: 'detail-docker' },
@@ -916,6 +927,9 @@
     }
 
     function continueSetup() {
+      const btn = document.getElementById('btn-continue');
+      if (btn.disabled || setupInProgress) return;
+
       if (configType === 'custom') {
         const email = document.getElementById('admin-email').value.trim();
         const password = document.getElementById('admin-password').value;
@@ -933,6 +947,7 @@
         adminPassword = password;
       }
 
+      btn.disabled = true;
       document.getElementById('config-page').classList.add('hidden');
       document.getElementById('setup-page').classList.remove('hidden');
       startSetup();
@@ -995,7 +1010,17 @@
 
     }
 
+    function cleanupListeners() {
+      cleanupFunctions.forEach(fn => { try { fn(); } catch {} });
+      cleanupFunctions = [];
+      api.docker.removeAllListeners();
+    }
+
     async function startSetup() {
+      if (setupInProgress) return;
+      setupInProgress = true;
+
+      cleanupListeners();
       hideError();
       hideButton('btn-retry');
       hideButton('btn-install-docker');
@@ -1020,6 +1045,7 @@
         showError('Docker Required', 'Install Docker Desktop to continue.');
         showButton('btn-install-docker');
         showButton('btn-retry');
+        setupInProgress = false;
         return;
       }
 
@@ -1028,6 +1054,7 @@
         setStepStatus('docker', 'error', 'Not running');
         showError('Docker Not Running', 'Start Docker Desktop and retry.');
         showButton('btn-retry');
+        setupInProgress = false;
         return;
       }
 
@@ -1037,12 +1064,13 @@
       document.getElementById('progress-images').classList.add('active');
 
       let pullProgress = 0;
-      api.docker.onPullProgress((progress) => {
+      const cleanupPull = api.docker.onPullProgress((progress) => {
         pullProgress = Math.min(pullProgress + 2, 95);
         document.getElementById('progress-fill-images').style.width = pullProgress + '%';
         const detail = progress.status.length > 35 ? progress.status.substring(0, 35) + '...' : progress.status;
         setStepStatus('images', 'loading', detail);
       });
+      cleanupFunctions.push(cleanupPull);
 
       try {
         await api.docker.pullImages();
@@ -1052,9 +1080,10 @@
         setStepStatus('images', 'error', 'Failed');
         showError('Pull Failed', error.message || 'Check internet connection.');
         showButton('btn-retry');
+        setupInProgress = false;
         return;
       } finally {
-        api.docker.removeAllListeners();
+        cleanupPull();
       }
 
       setStepStatus('containers', 'loading', 'Starting...');
@@ -1064,8 +1093,13 @@
         setStepStatus('containers', 'success', 'Running');
       } catch (error) {
         setStepStatus('containers', 'error', 'Failed');
-        showError('Start Failed', error.message || 'Could not start.');
+        let errorMsg = error.message || 'Could not start containers.';
+        if (errorMsg.includes('port')) {
+          errorMsg = 'Port conflict detected. Close applications using ports 3000, 5433, or 8000.';
+        }
+        showError('Start Failed', errorMsg);
         showButton('btn-retry');
+        setupInProgress = false;
         return;
       }
 
@@ -1088,13 +1122,14 @@
 
           setStepStatus('deps', 'loading', `Installing: ${missing.join(', ')}...`);
 
-          api.docker.onInstallProgress((status) => {
+          const cleanupInstall = api.docker.onInstallProgress((status) => {
             const detail = status.length > 35 ? status.substring(0, 35) + '...' : status;
             setStepStatus('deps', 'loading', detail);
           });
+          cleanupFunctions.push(cleanupInstall);
 
           await api.docker.installBackendDeps();
-          api.docker.removeAllListeners();
+          cleanupInstall();
 
           document.getElementById('progress-fill-deps').style.width = '90%';
           setStepStatus('deps', 'loading', 'Verifying installation...');
@@ -1114,39 +1149,45 @@
         document.getElementById('progress-fill-deps').style.width = '100%';
         setStepStatus('deps', 'success', 'All tools ready');
       } catch (error) {
-        api.docker.removeAllListeners();
+        cleanupListeners();
         setStepStatus('deps', 'error', 'Installation failed');
         showError('Dependencies Failed', error.message || 'Could not install backend tools.');
         showButton('btn-retry');
+        setupInProgress = false;
         return;
       }
 
       setStepStatus('ready', 'loading', 'Health check...');
 
-      api.docker.onStatusUpdate((status) => {
+      const cleanupStatus = api.docker.onStatusUpdate((status) => {
         setStepStatus('ready', 'loading', status);
       });
+      cleanupFunctions.push(cleanupStatus);
 
       try {
         const healthy = await api.docker.waitHealthy(180000);
-        api.docker.removeAllListeners();
+        cleanupStatus();
 
         if (!healthy) {
           setStepStatus('ready', 'error', 'Timeout');
-          showError('Timeout', 'Services did not start.');
+          showError('Timeout', 'Services did not become healthy in time.');
           showButton('btn-retry');
+          setupInProgress = false;
           return;
         }
 
         setStepStatus('ready', 'success', 'All systems go!');
+        setupCompleted = true;
+        setupInProgress = false;
 
         await new Promise(r => setTimeout(r, 600));
         showReadyPage();
       } catch (error) {
-        api.docker.removeAllListeners();
+        cleanupListeners();
         setStepStatus('ready', 'error', 'Error');
         showError('Failed', error.message || 'Unexpected error.');
         showButton('btn-retry');
+        setupInProgress = false;
       }
     }
 
