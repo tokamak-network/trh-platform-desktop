@@ -35,14 +35,20 @@ const electronAPI = {
     checkBackendDeps: (): Promise<BackendDependencies> => ipcRenderer.invoke('docker:check-backend-deps'),
     installBackendDeps: (): Promise<void> => ipcRenderer.invoke('docker:install-backend-deps'),
 
-    onPullProgress: (callback: (progress: PullProgress) => void): void => {
-      ipcRenderer.on('docker:pull-progress', (_event, progress) => callback(progress));
+    onPullProgress: (callback: (progress: PullProgress) => void): (() => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, progress: PullProgress) => callback(progress);
+      ipcRenderer.on('docker:pull-progress', handler);
+      return () => ipcRenderer.removeListener('docker:pull-progress', handler);
     },
-    onStatusUpdate: (callback: (status: string) => void): void => {
-      ipcRenderer.on('docker:status-update', (_event, status) => callback(status));
+    onStatusUpdate: (callback: (status: string) => void): (() => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, status: string) => callback(status);
+      ipcRenderer.on('docker:status-update', handler);
+      return () => ipcRenderer.removeListener('docker:status-update', handler);
     },
-    onInstallProgress: (callback: (status: string) => void): void => {
-      ipcRenderer.on('docker:install-progress', (_event, status) => callback(status));
+    onInstallProgress: (callback: (status: string) => void): (() => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, status: string) => callback(status);
+      ipcRenderer.on('docker:install-progress', handler);
+      return () => ipcRenderer.removeListener('docker:install-progress', handler);
     },
     removeAllListeners: (): void => {
       ipcRenderer.removeAllListeners('docker:pull-progress');
