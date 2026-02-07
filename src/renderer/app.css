@@ -1,0 +1,31 @@
+:root {
+  --blue: #0078FF;
+  --dark: #1C1C1C;
+  --gray-600: #52525B;
+  --gray-500: #71717A;
+  --gray-400: #A1A1AA;
+  --gray-200: #E4E4E7;
+  --gray-100: #F4F4F5;
+  --bg: #FFFFFF;
+  --success: #10B981;
+  --error: #EF4444;
+}
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+body {
+  font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+  background: var(--bg);
+  color: var(--dark);
+  min-height: 100vh;
+}
+
+.hidden { display: none !important; }
+
+.version {
+  position: fixed;
+  bottom: 16px;
+  right: 20px;
+  font-size: 11px;
+  color: var(--gray-400);
+}

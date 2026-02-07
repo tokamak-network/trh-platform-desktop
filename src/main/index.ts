@@ -12,6 +12,9 @@ import {
   checkBackendDependencies,
   installBackendDependencies,
   cleanupProcesses,
+  setLogCallback,
+  getPortConflicts,
+  killPortProcesses,
   PullProgress
 } from './docker';
 
@@ -21,6 +24,15 @@ let isQuitting = false;
 let dockerOperationInProgress = false;
 
 const PLATFORM_UI_URL = 'http://localhost:3000';
+const VITE_DEV_URL = 'http://localhost:5173';
+const isDev = !app.isPackaged;
+
+function getRendererPath(): string {
+  if (app.isPackaged) {
+    return path.join(app.getAppPath(), 'dist', 'renderer', 'index.html');
+  }
+  return path.join(__dirname, '..', 'renderer', 'index.html');
+}
 
 function getPublicPath(filename: string): string {
   if (app.isPackaged) {
@@ -58,7 +70,17 @@ function createWindow(): void {
 
   mainWindow.on('closed', () => { mainWindow = null; });
 
-  mainWindow.loadFile(getPublicPath('setup.html'));
+  if (isDev) {
+    mainWindow.loadURL(VITE_DEV_URL);
+  } else {
+    mainWindow.loadFile(getRendererPath());
+  }
+
+  setLogCallback((line: string) => {
+    if (mainWindow && !mainWindow.isDestroyed()) {
+      mainWindow.webContents.send('docker:log', line);
+    }
+  });
 }
 
 function createTray(): void {
@@ -176,6 +198,10 @@ function setupIpcHandlers(): void {
   ipcMain.handle('docker:check-running', () => isDockerRunning());
   ipcMain.handle('docker:get-status', () => getDockerStatus());
   ipcMain.handle('docker:get-install-url', () => getDockerInstallUrl());
+  ipcMain.handle('docker:check-ports', () => getPortConflicts());
+  ipcMain.handle('docker:kill-port-processes', async (_event, ports: number[]) => {
+    await killPortProcesses(ports);
+  });
 
   ipcMain.handle('docker:start', async (_event, config?: { adminEmail?: string; adminPassword?: string }) => {
     if (dockerOperationInProgress) {
@@ -261,11 +287,12 @@ function setupIpcHandlers(): void {
           return;
         }
       } catch {
-        if (i === maxRetries - 1) {
-          throw new Error('Platform UI failed to respond. Please check if Docker containers are running.');
-        }
-        await new Promise(resolve => setTimeout(resolve, retryDelay));
+        // Retry unless this is the last attempt
       }
+      if (i === maxRetries - 1) {
+        throw new Error('Platform UI failed to respond. Please check if Docker containers are running.');
+      }
+      await new Promise(resolve => setTimeout(resolve, retryDelay));
     }
   });
 

@@ -18,8 +18,7 @@ services:
     restart: unless-stopped
 
   backend:
-    image: trh-backend:electron
-    pull_policy: never
+    image: tokamaknetwork/trh-backend:latest
     container_name: trh-backend
     ports:
       - "8000:8000"
@@ -48,8 +47,7 @@ services:
     restart: unless-stopped
 
   platform-ui:
-    image: trh-platform-ui:electron
-    pull_policy: never
+    image: tokamaknetwork/trh-platform-ui:latest
     container_name: trh-platform-ui
     ports:
       - "3000:3000"

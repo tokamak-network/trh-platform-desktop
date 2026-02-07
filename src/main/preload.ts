@@ -14,6 +14,17 @@ export interface PullProgress {
   progress?: string;
 }
 
+export interface PortConflict {
+  port: number;
+  pid: number;
+  processName: string;
+}
+
+export interface PortCheckResult {
+  available: boolean;
+  conflicts: PortConflict[];
+}
+
 export interface BackendDependencies {
   pnpm: boolean;
   node: boolean;
@@ -27,6 +38,8 @@ const electronAPI = {
     checkInstalled: (): Promise<boolean> => ipcRenderer.invoke('docker:check-installed'),
     checkRunning: (): Promise<boolean> => ipcRenderer.invoke('docker:check-running'),
     getStatus: (): Promise<DockerStatus> => ipcRenderer.invoke('docker:get-status'),
+    checkPorts: (): Promise<PortCheckResult> => ipcRenderer.invoke('docker:check-ports'),
+    killPortProcesses: (ports: number[]): Promise<void> => ipcRenderer.invoke('docker:kill-port-processes', ports),
     pullImages: (): Promise<void> => ipcRenderer.invoke('docker:pull-images'),
     start: (config?: { adminEmail?: string; adminPassword?: string }): Promise<void> => ipcRenderer.invoke('docker:start', config),
     stop: (): Promise<void> => ipcRenderer.invoke('docker:stop'),
@@ -50,10 +63,16 @@ const electronAPI = {
       ipcRenderer.on('docker:install-progress', handler);
       return () => ipcRenderer.removeListener('docker:install-progress', handler);
     },
+    onLog: (callback: (line: string) => void): (() => void) => {
+      const handler = (_event: Electron.IpcRendererEvent, line: string) => callback(line);
+      ipcRenderer.on('docker:log', handler);
+      return () => ipcRenderer.removeListener('docker:log', handler);
+    },
     removeAllListeners: (): void => {
       ipcRenderer.removeAllListeners('docker:pull-progress');
       ipcRenderer.removeAllListeners('docker:status-update');
       ipcRenderer.removeAllListeners('docker:install-progress');
+      ipcRenderer.removeAllListeners('docker:log');
     }
   },
 

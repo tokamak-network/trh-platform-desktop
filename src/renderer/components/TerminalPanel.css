@@ -1,0 +1,123 @@
+.terminal-section {
+  margin-top: 20px;
+}
+
+.terminal-toggle {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  cursor: pointer;
+  padding: 8px 0;
+  user-select: none;
+}
+
+.terminal-toggle-icon {
+  width: 16px;
+  height: 16px;
+  transition: transform 0.2s;
+  color: var(--gray-500);
+}
+
+.terminal-toggle-icon.open {
+  transform: rotate(90deg);
+}
+
+.terminal-toggle-label {
+  font-size: 12px;
+  font-weight: 600;
+  color: var(--gray-500);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+.terminal-badge {
+  font-size: 10px;
+  font-weight: 600;
+  color: var(--gray-400);
+  background: var(--gray-100);
+  padding: 2px 6px;
+  border-radius: 4px;
+  margin-left: auto;
+}
+
+.terminal-container {
+  background: #1C1C1C;
+  border-radius: 10px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+
+.terminal-header {
+  display: flex;
+  align-items: center;
+  padding: 8px 12px;
+  background: #2A2A2A;
+  gap: 8px;
+}
+
+.terminal-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+}
+
+.terminal-dot.red { background: #FF5F57; }
+.terminal-dot.yellow { background: #FEBC2E; }
+.terminal-dot.green { background: #28C840; }
+
+.terminal-title {
+  font-size: 11px;
+  color: #999;
+  margin-left: 8px;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+}
+
+.terminal-clear {
+  margin-left: auto;
+  font-size: 10px;
+  color: #666;
+  cursor: pointer;
+  font-family: 'SF Mono', Monaco, monospace;
+  background: none;
+  border: none;
+  padding: 2px 6px;
+  border-radius: 3px;
+}
+
+.terminal-clear:hover {
+  color: #999;
+  background: #333;
+}
+
+.terminal-body {
+  padding: 12px;
+  height: 200px;
+  overflow-y: auto;
+  font-family: 'SF Mono', Monaco, 'Cascadia Code', monospace;
+  font-size: 11px;
+  line-height: 1.6;
+  color: #CCC;
+}
+
+.terminal-body::-webkit-scrollbar { width: 6px; }
+.terminal-body::-webkit-scrollbar-track { background: transparent; }
+.terminal-body::-webkit-scrollbar-thumb { background: #444; border-radius: 3px; }
+
+.log-line {
+  white-space: pre-wrap;
+  word-break: break-all;
+}
+
+.log-line .timestamp {
+  color: #666;
+  margin-right: 8px;
+}
+
+.log-line.error { color: #EF4444; }
+.log-line.success { color: #10B981; }
+.log-line.info { color: #60A5FA; }
+
+.log-empty {
+  color: #555;
+  font-style: italic;
+}

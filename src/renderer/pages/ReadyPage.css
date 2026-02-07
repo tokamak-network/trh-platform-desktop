@@ -1,0 +1,223 @@
+.ready-page {
+  min-height: 100vh;
+  display: none;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding-top: 64px;
+  position: relative;
+  overflow: hidden;
+  background:
+    linear-gradient(135deg, rgba(255,255,255,0.95) 0%, rgba(248,250,252,0.9) 100%),
+    url('../assets/images/default-bg.png');
+  background-size: cover;
+  background-position: center;
+}
+
+.ready-page.visible { display: flex; }
+
+.solar-system {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 100%;
+  height: 100%;
+}
+
+.solar-center {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  width: 180px;
+  height: 180px;
+  z-index: 10;
+}
+
+.orbit {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  border: 1px dashed rgba(28, 28, 28, 0.2);
+  border-radius: 50%;
+  transform: translate(-50%, -50%);
+}
+
+.orbit-1 { width: 260px; height: 260px; }
+.orbit-2 { width: 380px; height: 380px; }
+.orbit-3 { width: 520px; height: 520px; }
+.orbit-4 { width: 700px; height: 700px; }
+.orbit-5 { width: 920px; height: 920px; }
+.orbit-6 { width: 1200px; height: 1200px; }
+
+.planet {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  transform-origin: center center;
+}
+
+.planet-dot {
+  width: 16px;
+  height: 16px;
+  background: radial-gradient(circle at 30% 30%, #ccc, #3c3c3c, #000);
+  border-radius: 50%;
+  position: relative;
+}
+
+.planet-2 .planet-dot::after {
+  content: '';
+  position: absolute;
+  width: 6px;
+  height: 6px;
+  background: radial-gradient(circle at 30% 30%, #ccc, #3c3c3c, #000);
+  border-radius: 50%;
+  top: -2px;
+  right: -10px;
+}
+
+.planet-label {
+  position: absolute;
+  top: -22px;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dark);
+}
+
+.planet-1 { animation: orbit1 15s linear infinite; }
+.planet-2 { animation: orbit2 20s linear infinite; }
+.planet-3 { animation: orbit3 28s linear infinite; }
+.planet-4 { animation: orbit4 38s linear infinite; }
+.planet-5 { animation: orbit5 50s linear infinite; }
+.planet-6 { animation: orbit6 65s linear infinite; }
+
+.planet-1 .planet-dot { width: 14px; height: 14px; }
+.planet-2 .planet-dot { width: 16px; height: 16px; }
+.planet-3 .planet-dot { width: 18px; height: 18px; }
+.planet-4 .planet-dot { width: 14px; height: 14px; }
+.planet-5 .planet-dot { width: 20px; height: 20px; }
+.planet-6 .planet-dot { width: 22px; height: 22px; }
+
+@keyframes orbit1 {
+  from { transform: translate(-50%, -50%) rotate(30deg) translateX(130px) rotate(-30deg); }
+  to { transform: translate(-50%, -50%) rotate(390deg) translateX(130px) rotate(-390deg); }
+}
+@keyframes orbit2 {
+  from { transform: translate(-50%, -50%) rotate(90deg) translateX(190px) rotate(-90deg); }
+  to { transform: translate(-50%, -50%) rotate(450deg) translateX(190px) rotate(-450deg); }
+}
+@keyframes orbit3 {
+  from { transform: translate(-50%, -50%) rotate(200deg) translateX(260px) rotate(-200deg); }
+  to { transform: translate(-50%, -50%) rotate(560deg) translateX(260px) rotate(-560deg); }
+}
+@keyframes orbit4 {
+  from { transform: translate(-50%, -50%) rotate(320deg) translateX(350px) rotate(-320deg); }
+  to { transform: translate(-50%, -50%) rotate(680deg) translateX(350px) rotate(-680deg); }
+}
+@keyframes orbit5 {
+  from { transform: translate(-50%, -50%) rotate(150deg) translateX(460px) rotate(-150deg); }
+  to { transform: translate(-50%, -50%) rotate(510deg) translateX(460px) rotate(-510deg); }
+}
+@keyframes orbit6 {
+  from { transform: translate(-50%, -50%) rotate(270deg) translateX(600px) rotate(-270deg); }
+  to { transform: translate(-50%, -50%) rotate(630deg) translateX(600px) rotate(-630deg); }
+}
+
+.ready-content {
+  text-align: left;
+  -webkit-app-region: no-drag;
+  z-index: 20;
+  position: absolute;
+  bottom: 50px;
+  left: 50px;
+  max-width: 600px;
+}
+
+.ready-title {
+  font-size: 56px;
+  font-weight: 700;
+  color: var(--dark);
+  margin-bottom: 20px;
+  letter-spacing: -2px;
+  line-height: 1.05;
+  text-transform: uppercase;
+}
+
+.ready-title span {
+  display: block;
+  font-size: 62px;
+}
+
+.ready-subtitle {
+  font-size: 18px;
+  color: var(--dark);
+  margin-bottom: 6px;
+  font-weight: 500;
+  line-height: 1.5;
+}
+
+.ready-subtitle-secondary {
+  font-size: 18px;
+  color: var(--dark);
+  margin-bottom: 32px;
+  font-weight: 500;
+}
+
+.ready-error {
+  font-size: 14px;
+  color: var(--error);
+  margin-bottom: 16px;
+  font-weight: 500;
+}
+
+.ready-buttons {
+  display: flex;
+  gap: 15px;
+  justify-content: flex-start;
+}
+
+.btn-start {
+  background: var(--dark);
+  color: white;
+  padding: 12px 24px;
+  border-radius: 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border: none;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  height: 46px;
+  min-width: 140px;
+  transition: all 0.2s;
+}
+
+.btn-start:hover { background: #0070ED; }
+.btn-start img { width: 14px; height: 14px; }
+
+.btn-secondary {
+  background: rgba(255, 255, 255, 0.5);
+  color: var(--dark);
+  padding: 12px 24px;
+  border-radius: 24px;
+  font-size: 14px;
+  font-weight: 600;
+  border: 2px solid #DFE4EE;
+  cursor: pointer;
+  height: 46px;
+  min-width: 140px;
+  transition: all 0.2s;
+}
+
+.btn-secondary:hover {
+  background: var(--dark);
+  color: white;
+  border-color: var(--dark);
+}

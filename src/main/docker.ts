@@ -13,6 +13,18 @@ const COMPOSE_TIMEOUT = 120000;
 const REQUIRED_PORTS = [3000, 5433, 8000];
 const activeProcesses = new Set<ChildProcess>();
 
+let logCallback: ((line: string) => void) | null = null;
+
+export function setLogCallback(cb: ((line: string) => void) | null): void {
+  logCallback = cb;
+}
+
+function emitLog(line: string): void {
+  if (logCallback && line.trim()) {
+    logCallback(line.trim());
+  }
+}
+
 const DOCKER_PATHS = [
   '/usr/local/bin/docker',
   '/opt/homebrew/bin/docker',
@@ -93,7 +105,7 @@ async function isPortAvailable(port: number): Promise<boolean> {
   });
 }
 
-async function checkRequiredPorts(): Promise<{ available: boolean; blockedPorts: number[] }> {
+export async function checkRequiredPorts(): Promise<{ available: boolean; blockedPorts: number[] }> {
   const blockedPorts: number[] = [];
   for (const port of REQUIRED_PORTS) {
     if (!(await isPortAvailable(port))) {
@@ -101,6 +113,69 @@ async function checkRequiredPorts(): Promise<{ available: boolean; blockedPorts:
     }
   }
   return { available: blockedPorts.length === 0, blockedPorts };
+}
+
+export interface PortConflict {
+  port: number;
+  pid: number;
+  processName: string;
+}
+
+export async function getPortConflicts(): Promise<{ available: boolean; conflicts: PortConflict[] }> {
+  const portCheck = await checkRequiredPorts();
+  if (portCheck.available) {
+    return { available: true, conflicts: [] };
+  }
+
+  const conflicts: PortConflict[] = [];
+  for (const port of portCheck.blockedPorts) {
+    try {
+      const pidOutput = await execPromise(`lsof -i :${port} -t -sTCP:LISTEN`);
+      const pids = pidOutput.split('\n').map(p => parseInt(p.trim())).filter(p => !isNaN(p) && p > 0);
+      for (const pid of pids) {
+        try {
+          const name = await execPromise(`ps -p ${pid} -o comm=`);
+          conflicts.push({ port, pid, processName: name.trim() });
+        } catch {
+          conflicts.push({ port, pid, processName: 'unknown' });
+        }
+      }
+    } catch {
+      // lsof failed — port is blocked but can't identify the process
+      emitLog(`Could not identify process on port ${port}`);
+    }
+  }
+
+  return { available: false, conflicts };
+}
+
+export async function killPortProcesses(ports: number[]): Promise<void> {
+  for (const port of ports) {
+    try {
+      const pidOutput = await execPromise(`lsof -i :${port} -t -sTCP:LISTEN`);
+      const pids = pidOutput.split('\n').map(p => parseInt(p.trim())).filter(p => !isNaN(p) && p > 0);
+      for (const pid of pids) {
+        try {
+          process.kill(pid, 'SIGTERM');
+          emitLog(`Killed process ${pid} on port ${port}`);
+        } catch (err) {
+          emitLog(`Could not kill process ${pid} on port ${port}: ${err instanceof Error ? err.message : 'unknown'}`);
+        }
+      }
+    } catch {
+      // No process found on port, already free
+    }
+  }
+
+  // Wait for processes to terminate
+  await new Promise(resolve => setTimeout(resolve, 1500));
+
+  // Verify ports are freed
+  for (const port of ports) {
+    if (!(await isPortAvailable(port))) {
+      throw new Error(`Port ${port} is still in use after killing processes. You may need to free it manually.`);
+    }
+  }
 }
 
 export function cleanupProcesses(): void {
@@ -216,6 +291,7 @@ export async function pullImages(onProgress: (progress: PullProgress) => void): 
     const parseOutput = (data: Buffer) => {
       const lines = data.toString().split('\n').filter(Boolean);
       for (const line of lines) {
+        emitLog(line);
         const match = line.match(/^(\w+[-\w]*)\s+(.+)$/);
         if (match) {
           onProgress({ service: match[1], status: match[2] });
@@ -247,14 +323,6 @@ export async function pullImages(onProgress: (progress: PullProgress) => void): 
 }
 
 export async function startContainers(config?: ContainerConfig): Promise<void> {
-  const portCheck = await checkRequiredPorts();
-  if (!portCheck.available) {
-    throw new Error(
-      `Ports already in use: ${portCheck.blockedPorts.join(', ')}. ` +
-      'Close applications using these ports and try again.'
-    );
-  }
-
   const composePath = getComposePath();
   const credentials = validateCredentials(config);
 
@@ -276,7 +344,14 @@ export async function startContainers(config?: ContainerConfig): Promise<void> {
     }, COMPOSE_TIMEOUT);
 
     let stderrOutput = '';
-    up.stderr.on('data', (data) => { stderrOutput += data.toString(); });
+    up.stdout.on('data', (data) => {
+      data.toString().split('\n').filter(Boolean).forEach((line: string) => emitLog(line));
+    });
+    up.stderr.on('data', (data) => {
+      const text = data.toString();
+      stderrOutput += text;
+      text.split('\n').filter(Boolean).forEach((line: string) => emitLog(line));
+    });
 
     up.on('close', code => {
       clearTimeout(timeout);
@@ -319,6 +394,13 @@ export async function stopContainers(): Promise<void> {
       down.kill('SIGTERM');
       reject(new Error('Container shutdown timed out. Try force-stopping Docker containers manually.'));
     }, COMPOSE_TIMEOUT);
+
+    down.stdout.on('data', (data) => {
+      data.toString().split('\n').filter(Boolean).forEach((line: string) => emitLog(line));
+    });
+    down.stderr.on('data', (data) => {
+      data.toString().split('\n').filter(Boolean).forEach((line: string) => emitLog(line));
+    });
 
     down.on('close', code => {
       clearTimeout(timeout);
@@ -419,10 +501,15 @@ export async function installBackendDependencies(onProgress?: (status: string) =
     install.stdout.on('data', (data) => {
       const lines = data.toString().split('\n').filter(Boolean);
       for (const line of lines) {
+        emitLog(line);
         if (line.includes('Installing') || line.includes('Setting up') || line.includes('STEP')) {
           onProgress?.(line.trim().substring(0, 50));
         }
       }
+    });
+
+    install.stderr.on('data', (data) => {
+      data.toString().split('\n').filter(Boolean).forEach((line: string) => emitLog(line));
     });
 
     install.on('close', async (code) => {

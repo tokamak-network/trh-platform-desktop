@@ -1,0 +1,111 @@
+.modal-overlay {
+  display: none;
+  position: fixed;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background: rgba(0, 0, 0, 0.4);
+  backdrop-filter: blur(4px);
+  z-index: 1000;
+  align-items: center;
+  justify-content: center;
+}
+
+.modal-overlay.visible {
+  display: flex;
+}
+
+.modal {
+  background: white;
+  border-radius: 16px;
+  padding: 28px;
+  max-width: 420px;
+  width: 90%;
+  box-shadow: 0 20px 60px rgba(0, 0, 0, 0.2);
+  -webkit-app-region: no-drag;
+}
+
+.modal-icon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  background: #FEF3C7;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  margin-bottom: 16px;
+  font-size: 20px;
+}
+
+.modal h3 {
+  font-size: 16px;
+  font-weight: 700;
+  color: var(--dark);
+  margin-bottom: 8px;
+}
+
+.modal p {
+  font-size: 13px;
+  color: var(--gray-500);
+  margin-bottom: 16px;
+  line-height: 1.5;
+}
+
+.conflict-list {
+  list-style: none;
+  margin-bottom: 20px;
+}
+
+.conflict-item {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 10px 12px;
+  background: var(--gray-100);
+  border-radius: 8px;
+  margin-bottom: 6px;
+}
+
+.conflict-port {
+  font-size: 13px;
+  font-weight: 600;
+  color: var(--dark);
+  font-family: 'SF Mono', Monaco, monospace;
+}
+
+.conflict-process {
+  font-size: 12px;
+  color: var(--gray-500);
+  font-family: 'SF Mono', Monaco, monospace;
+}
+
+.modal-actions {
+  display: flex;
+  gap: 10px;
+  justify-content: flex-end;
+}
+
+.btn-modal {
+  padding: 10px 20px;
+  border-radius: 8px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  border: none;
+  transition: all 0.15s;
+}
+
+.btn-modal-cancel {
+  background: var(--gray-100);
+  color: var(--gray-600);
+}
+
+.btn-modal-cancel:hover { background: var(--gray-200); }
+
+.btn-modal-confirm {
+  background: var(--error);
+  color: white;
+}
+
+.btn-modal-confirm:hover { background: #DC2626; }
