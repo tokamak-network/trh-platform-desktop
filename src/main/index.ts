@@ -15,6 +15,9 @@ import {
   setLogCallback,
   getPortConflicts,
   killPortProcesses,
+  cleanupStaleContainers,
+  startDockerDaemon,
+  pruneDockerDisk,
   PullProgress
 } from './docker';
 
@@ -201,6 +204,18 @@ function setupIpcHandlers(): void {
   ipcMain.handle('docker:check-ports', () => getPortConflicts());
   ipcMain.handle('docker:kill-port-processes', async (_event, ports: number[]) => {
     await killPortProcesses(ports);
+  });
+
+  ipcMain.handle('docker:cleanup', async () => {
+    await cleanupStaleContainers();
+  });
+
+  ipcMain.handle('docker:start-daemon', async () => {
+    return await startDockerDaemon();
+  });
+
+  ipcMain.handle('docker:prune', async () => {
+    await pruneDockerDisk();
   });
 
   ipcMain.handle('docker:start', async (_event, config?: { adminEmail?: string; adminPassword?: string }) => {

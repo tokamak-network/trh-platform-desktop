@@ -38,6 +38,9 @@ export interface ElectronAPI {
     getStatus: () => Promise<DockerStatus>;
     checkPorts: () => Promise<PortCheckResult>;
     killPortProcesses: (ports: number[]) => Promise<void>;
+    cleanup: () => Promise<void>;
+    startDaemon: () => Promise<boolean>;
+    prune: () => Promise<void>;
     pullImages: () => Promise<void>;
     start: (config?: { adminEmail?: string; adminPassword?: string }) => Promise<void>;
     stop: () => Promise<void>;

@@ -26,7 +26,7 @@
   },
   "main": "dist/main/index.js",
   "scripts": {
-    "dev": "npm run build:main && concurrently \"vite --config vite.config.ts\" \"sleep 2 && electron .\"",
+    "dev": "npm run build:main && concurrently --kill-others-on-fail \"vite --config vite.config.ts\" \"sleep 2 && electron .\"",
     "dev:watch": "concurrently \"tsc -p tsconfig.electron.json -w\" \"vite --config vite.config.ts\" \"sleep 3 && electron .\"",
     "build:main": "tsc -p tsconfig.electron.json",
     "build:renderer": "vite build --config vite.config.ts",

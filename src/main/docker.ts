@@ -94,6 +94,15 @@ function execPromise(command: string, timeout = COMMAND_TIMEOUT): Promise<string
 }
 
 async function isPortAvailable(port: number): Promise<boolean> {
+  // Use lsof first (most reliable on macOS — catches all interfaces)
+  try {
+    const result = await execPromise(`lsof -iTCP:${port} -sTCP:LISTEN -t`, 5000);
+    if (result.trim()) return false; // something is listening
+  } catch {
+    // lsof returns non-zero when nothing found = port is free
+  }
+
+  // Fallback: try binding on all interfaces
   return new Promise((resolve) => {
     const server = net.createServer();
     server.once('error', () => resolve(false));
@@ -101,7 +110,7 @@ async function isPortAvailable(port: number): Promise<boolean> {
       server.close();
       resolve(true);
     });
-    server.listen(port, '127.0.0.1');
+    server.listen(port);
   });
 }
 
@@ -208,6 +217,45 @@ function validateCredentials(config?: ContainerConfig): { email?: string; passwo
   }
 
   return result;
+}
+
+export async function startDockerDaemon(): Promise<boolean> {
+  emitLog('Attempting to start Docker Desktop...');
+  try {
+    if (process.platform === 'darwin') {
+      await execPromise('open -a Docker', 5000);
+    } else if (process.platform === 'win32') {
+      await execPromise('start "" "C:\\Program Files\\Docker\\Docker\\Docker Desktop.exe"', 5000);
+    } else {
+      await execPromise('systemctl start docker', 5000);
+    }
+  } catch {
+    emitLog('Could not launch Docker automatically');
+    return false;
+  }
+
+  // Wait up to 60s for daemon to respond
+  for (let i = 0; i < 30; i++) {
+    await new Promise(r => setTimeout(r, 2000));
+    emitLog(`Waiting for Docker daemon... (${i + 1})`);
+    if (await isDockerRunning()) {
+      emitLog('Docker daemon is now running');
+      return true;
+    }
+  }
+
+  emitLog('Docker daemon did not start in time');
+  return false;
+}
+
+export async function pruneDockerDisk(): Promise<void> {
+  emitLog('Freeing disk space with docker system prune...');
+  try {
+    await execPromise(`"${DOCKER_BIN}" system prune -f --volumes`, 60000);
+    emitLog('Docker prune complete');
+  } catch (err) {
+    emitLog('Prune failed: ' + (err instanceof Error ? err.message : 'unknown'));
+  }
 }
 
 export async function isDockerInstalled(): Promise<boolean> {
@@ -343,13 +391,15 @@ export async function startContainers(config?: ContainerConfig): Promise<void> {
       reject(new Error('Container startup timed out. Docker may be unresponsive.'));
     }, COMPOSE_TIMEOUT);
 
-    let stderrOutput = '';
+    let allOutput = '';
     up.stdout.on('data', (data) => {
-      data.toString().split('\n').filter(Boolean).forEach((line: string) => emitLog(line));
+      const text = data.toString();
+      allOutput += text;
+      text.split('\n').filter(Boolean).forEach((line: string) => emitLog(line));
     });
     up.stderr.on('data', (data) => {
       const text = data.toString();
-      stderrOutput += text;
+      allOutput += text;
       text.split('\n').filter(Boolean).forEach((line: string) => emitLog(line));
     });
 
@@ -359,15 +409,40 @@ export async function startContainers(config?: ContainerConfig): Promise<void> {
       if (code === 0) {
         resolve();
       } else {
+        const lower = allOutput.toLowerCase();
         let errorMsg = `Docker compose up failed with code ${code}.`;
-        if (stderrOutput.includes('port is already allocated')) {
+        let errorType = 'unknown';
+
+        if (lower.includes('port is already allocated') || lower.includes('address already in use') || lower.includes('bind: address already in use') || lower.includes('failed to bind') || lower.includes('port') && lower.includes('already in use')) {
           errorMsg = 'Port conflict detected. Another process is using required ports.';
-        } else if (stderrOutput.includes('No such image')) {
+          errorType = 'port';
+        } else if (lower.includes('no such image')) {
           errorMsg = 'Required Docker images not found. Please pull images first.';
-        } else if (stderrOutput.includes('Cannot connect')) {
+          errorType = 'image';
+        } else if (lower.includes('cannot connect') || lower.includes('is the docker daemon running')) {
           errorMsg = 'Cannot connect to Docker daemon. Is Docker Desktop running?';
+          errorType = 'daemon';
+        } else if (lower.includes('is already in use by container') || lower.includes('name is already in use')) {
+          errorMsg = 'Stale containers found. Cleaning up will fix this.';
+          errorType = 'stale';
+        } else if (lower.includes('network') && lower.includes('already exists')) {
+          errorMsg = 'Docker network conflict. Cleaning up will fix this.';
+          errorType = 'stale';
+        } else if (lower.includes('volume') && (lower.includes('in use') || lower.includes('already exists'))) {
+          errorMsg = 'Docker volume conflict. Cleaning up will fix this.';
+          errorType = 'stale';
+        } else if (lower.includes('no space left on device') || lower.includes('disk space')) {
+          errorMsg = 'Not enough disk space. Free up space and retry.';
+          errorType = 'disk';
+        } else if (lower.includes('permission denied')) {
+          errorMsg = 'Permission denied. Check Docker permissions.';
+          errorType = 'permission';
         }
-        reject(new Error(errorMsg));
+
+        const err = new Error(errorMsg);
+        (err as any).errorType = errorType;
+        (err as any).output = allOutput;
+        reject(err);
       }
     });
 
@@ -418,6 +493,46 @@ export async function stopContainers(): Promise<void> {
       reject(err);
     });
   });
+}
+
+export async function cleanupStaleContainers(): Promise<void> {
+  const composePath = getComposePath();
+
+  emitLog('Cleaning up stale containers, networks, and volumes...');
+
+  // docker compose down --remove-orphans --volumes to nuke everything
+  await new Promise<void>((resolve, reject) => {
+    const down = spawn(DOCKER_BIN, ['compose', '-f', composePath, 'down', '--remove-orphans', '--volumes'], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env, PATH: EXTENDED_PATH }
+    });
+
+    activeProcesses.add(down);
+    const timeout = setTimeout(() => { down.kill('SIGTERM'); resolve(); }, 30000);
+
+    down.stdout.on('data', (data) => {
+      data.toString().split('\n').filter(Boolean).forEach((line: string) => emitLog(line));
+    });
+    down.stderr.on('data', (data) => {
+      data.toString().split('\n').filter(Boolean).forEach((line: string) => emitLog(line));
+    });
+
+    down.on('close', () => { clearTimeout(timeout); activeProcesses.delete(down); resolve(); });
+    down.on('error', () => { clearTimeout(timeout); activeProcesses.delete(down); resolve(); });
+  });
+
+  // Also force-remove the specific containers if they're stuck
+  const containers = ['trh-postgres', 'trh-backend', 'trh-platform-ui'];
+  for (const name of containers) {
+    try {
+      await execPromise(`"${DOCKER_BIN}" rm -f ${name}`, 10000);
+      emitLog(`Removed stale container: ${name}`);
+    } catch {
+      // Container doesn't exist, that's fine
+    }
+  }
+
+  emitLog('Cleanup complete');
 }
 
 export async function waitForHealthy(
