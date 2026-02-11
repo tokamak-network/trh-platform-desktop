@@ -10,6 +10,7 @@ const api = window.electronAPI;
 export default function App() {
   const [page, setPage] = useState<Page>('config');
   const [version, setVersion] = useState('1.0.0');
+  const [updateAvailable, setUpdateAvailable] = useState(false);
   const [credentials, setCredentials] = useState({
     email: 'admin@gmail.com',
     password: 'admin123',
@@ -28,6 +29,10 @@ export default function App() {
         const status = await api.docker.getStatus();
         if (status.healthy) {
           setPage('ready');
+          // Background update check
+          api.docker.checkUpdates().then(hasUpdate => {
+            if (hasUpdate) setUpdateAvailable(true);
+          }).catch(() => {});
         }
       } catch {
         // Docker not available — proceed to config page
@@ -54,7 +59,12 @@ export default function App() {
           onComplete={handleSetupDone}
         />
       )}
-      {page === 'ready' && <ReadyPage />}
+      {page === 'ready' && (
+        <ReadyPage
+          updateAvailable={updateAvailable}
+          onUpdate={() => setUpdateAvailable(false)}
+        />
+      )}
       <div className="version">v{version}</div>
     </>
   );

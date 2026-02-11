@@ -18,6 +18,8 @@ import {
   cleanupStaleContainers,
   startDockerDaemon,
   pruneDockerDisk,
+  checkForUpdates,
+  restartWithUpdates,
   PullProgress
 } from './docker';
 
@@ -216,6 +218,28 @@ function setupIpcHandlers(): void {
 
   ipcMain.handle('docker:prune', async () => {
     await pruneDockerDisk();
+  });
+
+  ipcMain.handle('docker:check-updates', async () => {
+    if (dockerOperationInProgress) return false;
+    dockerOperationInProgress = true;
+    try {
+      return await checkForUpdates();
+    } finally {
+      dockerOperationInProgress = false;
+    }
+  });
+
+  ipcMain.handle('docker:restart-with-updates', async (_event, config?: { adminEmail?: string; adminPassword?: string }) => {
+    if (dockerOperationInProgress) {
+      throw new Error('Docker operation already in progress');
+    }
+    dockerOperationInProgress = true;
+    try {
+      await restartWithUpdates(config);
+    } finally {
+      dockerOperationInProgress = false;
+    }
   });
 
   ipcMain.handle('docker:start', async (_event, config?: { adminEmail?: string; adminPassword?: string }) => {

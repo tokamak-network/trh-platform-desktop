@@ -14,12 +14,18 @@ const planets = [
   { label: 'SDK', className: 'planet-6' },
 ];
 
-export default function ReadyPage() {
+interface ReadyPageProps {
+  updateAvailable?: boolean;
+  onUpdate?: () => void;
+}
+
+export default function ReadyPage({ updateAvailable, onUpdate }: ReadyPageProps) {
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [updating, setUpdating] = useState(false);
 
   const handleLoadPlatform = async () => {
-    if (loading) return;
+    if (loading || updating) return;
     setLoading(true);
     setError(null);
     try {
@@ -28,6 +34,25 @@ export default function ReadyPage() {
       setError('Platform UI is not responding. Check if Docker containers are running.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleUpdate = async () => {
+    if (updating || loading) return;
+    setUpdating(true);
+    setError(null);
+    try {
+      await api.docker.restartWithUpdates();
+      // Wait for services to become healthy
+      const healthy = await api.docker.waitHealthy(180000);
+      if (!healthy) {
+        setError('Services did not become healthy after update. Try restarting.');
+      }
+    } catch (err: any) {
+      setError(err.message || 'Update failed. Try restarting the app.');
+    } finally {
+      setUpdating(false);
+      onUpdate?.();
     }
   };
 
@@ -52,14 +77,22 @@ export default function ReadyPage() {
         </h1>
         <p className="ready-subtitle">Explore and Deploy your On-Demand Appchain</p>
         <p className="ready-subtitle-secondary">A Fast, Secure, and Fully Customizable L2 Appchain</p>
+        {(updateAvailable || updating) && (
+          <div className="update-banner">
+            <span>{updating ? 'Updating services...' : 'New platform update available'}</span>
+            {!updating && (
+              <button className="update-btn" onClick={handleUpdate}>Update Now</button>
+            )}
+          </div>
+        )}
         {error && (
           <p className="ready-error">{error}</p>
         )}
         <div className="ready-buttons">
-          <button className="btn-secondary" onClick={handleLoadPlatform} disabled={loading}>
+          <button className="btn-secondary" onClick={handleLoadPlatform} disabled={loading || updating}>
             Dashboard
           </button>
-          <button className="btn-start" onClick={handleLoadPlatform} disabled={loading}>
+          <button className="btn-start" onClick={handleLoadPlatform} disabled={loading || updating}>
             {loading ? 'Loading...' : 'Get Started'}
             {!loading && <img src={nextIcon} alt="arrow" />}
           </button>

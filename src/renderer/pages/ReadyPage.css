@@ -221,3 +221,34 @@
   color: white;
   border-color: var(--dark);
 }
+
+.update-banner {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  background: rgba(0, 112, 237, 0.08);
+  border: 1px solid rgba(0, 112, 237, 0.25);
+  border-radius: 12px;
+  padding: 10px 16px;
+  margin-bottom: 20px;
+  font-size: 14px;
+  font-weight: 500;
+  color: var(--dark);
+}
+
+.update-btn {
+  background: #0070ED;
+  color: white;
+  border: none;
+  border-radius: 8px;
+  padding: 6px 14px;
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  white-space: nowrap;
+  transition: background 0.2s;
+}
+
+.update-btn:hover {
+  background: #005bbf;
+}

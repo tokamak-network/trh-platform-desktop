@@ -41,6 +41,8 @@ export interface ElectronAPI {
     cleanup: () => Promise<void>;
     startDaemon: () => Promise<boolean>;
     prune: () => Promise<void>;
+    checkUpdates: () => Promise<boolean>;
+    restartWithUpdates: (config?: { adminEmail?: string; adminPassword?: string }) => Promise<void>;
     pullImages: () => Promise<void>;
     start: (config?: { adminEmail?: string; adminPassword?: string }) => Promise<void>;
     stop: () => Promise<void>;

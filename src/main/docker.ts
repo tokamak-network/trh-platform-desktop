@@ -370,6 +370,84 @@ export async function pullImages(onProgress: (progress: PullProgress) => void): 
   });
 }
 
+const UPDATE_IMAGES = [
+  'tokamaknetwork/trh-backend:latest',
+  'tokamaknetwork/trh-platform-ui:latest',
+];
+
+async function getImageDigests(): Promise<Record<string, string>> {
+  const digests: Record<string, string> = {};
+  for (const image of UPDATE_IMAGES) {
+    try {
+      const id = await execPromise(`"${DOCKER_BIN}" image inspect ${image} --format "{{.Id}}"`, 10000);
+      digests[image] = id.trim();
+    } catch {
+      digests[image] = '';
+    }
+  }
+  return digests;
+}
+
+export async function checkForUpdates(): Promise<boolean> {
+  const composePath = getComposePath();
+  emitLog('Checking for image updates...');
+
+  // Snapshot current image IDs
+  const before = await getImageDigests();
+
+  // Pull latest images
+  return new Promise((resolve) => {
+    const pull = spawn(DOCKER_BIN, ['compose', '-f', composePath, 'pull', '-q'], {
+      stdio: ['ignore', 'pipe', 'pipe'],
+      env: { ...process.env, PATH: EXTENDED_PATH }
+    });
+
+    activeProcesses.add(pull);
+    // 3 min timeout for background check (not 10 min)
+    const timeout = setTimeout(() => {
+      pull.kill('SIGTERM');
+      emitLog('Update check timed out');
+      resolve(false);
+    }, 180000);
+
+    pull.stderr.on('data', (data) => {
+      // Don't emit logs for quiet background pull
+      // Only capture errors
+    });
+
+    pull.on('close', async (code) => {
+      clearTimeout(timeout);
+      activeProcesses.delete(pull);
+      if (code !== 0) {
+        emitLog('Update check failed');
+        resolve(false);
+        return;
+      }
+
+      // Compare image IDs after pull
+      const after = await getImageDigests();
+      const changed = UPDATE_IMAGES.some(img => before[img] !== after[img] && after[img] !== '');
+
+      if (changed) {
+        emitLog('New images downloaded — update available');
+        resolve(true);
+      } else {
+        emitLog('All images up to date');
+        resolve(false);
+      }
+    });
+
+    pull.on('error', () => { clearTimeout(timeout); activeProcesses.delete(pull); resolve(false); });
+  });
+}
+
+export async function restartWithUpdates(config?: ContainerConfig): Promise<void> {
+  emitLog('Restarting containers with updated images...');
+  await stopContainers();
+  await startContainers(config);
+  emitLog('Containers restarted with latest images');
+}
+
 export async function startContainers(config?: ContainerConfig): Promise<void> {
   const composePath = getComposePath();
   const credentials = validateCredentials(config);
